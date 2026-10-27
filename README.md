@@ -33,7 +33,7 @@
 
 *Приведённые значения L1 рассчитаны на отдельном validation-батче, а не на всей validation-выборке.*
 
-[Ноутбук обучения и анализа](notebooks/03_unet_baseline.ipynb) · [W&B — первый запуск](https://wandb.ai/arzushkaB/image-colorization/runs/ngviphfh)
+[Ноутбук обучения и анализа](notebooks/03_unet_baseline.ipynb) · [W&B — графики логирования](https://forge.coreweave.com/wandb/arzushkaB/image-colorization?nw=nwuserarzun9530)
 
 ## Структура проекта
 
