@@ -41,7 +41,7 @@ def validation_epoch(model, criterion, val_loader, device):
 
 
 def train_model(model, criterion, optimizer, train_loader, val_loader, num_epochs, device,
-          last_path=None, best_path=None, run=None):
+          last_path=None, best_path=None, run=None, scheduler=None):
 
     # Инициализация
     train_loss = []
@@ -59,6 +59,10 @@ def train_model(model, criterion, optimizer, train_loader, val_loader, num_epoch
 
         val_loss.append(validation_epoch(model, criterion,
                                          val_loader, device))
+        
+        if scheduler is not None:
+            scheduler.step(val_loss[-1])
+            
         if (last_path is not None) or (best_path is not None):
             # Формирование checkpoint
             checkpoint = {
