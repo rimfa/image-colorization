@@ -17,9 +17,17 @@
 
 **Обучение:** L1 Loss, AdamW (`lr=1e-3`), batch size 32. Первоначально модель обучалась 20 эпох, затем была дообучена ещё 20 эпох (всего 40).
 
-Обучение проводилось в Google Colab с использованием GPU, метрики отслеживались в Weights & Biases.
+## U-Net with Pretrained ResNet18 Encoder
 
-### Результаты
+В следующем эксперименте encoder U-Net был заменён на ResNet18 с предобученными весами ImageNet. Decoder реализован на основе блоков U-Net со skip connections.
+
+На данном этапе веса encoder заморожены, обучается только decoder. Входной канал `L` дублируется до трёх каналов с последующей нормализацией ImageNet.
+
+**Обучение:** L1 Loss, AdamW (`lr=1e-3`), batch size 32, 20 эпох.
+
+## Результаты
+
+Обучение проводилось в Google Colab с использованием GPU, метрики отслеживались в Weights & Biases.
 
 Сравнение L1 Loss на одном validation-батче из 32 изображений:
 
@@ -27,13 +35,18 @@
 |---|---:|
 | Grayscale baseline (`ab = 0`) | 0.06416 |
 | U-Net — 20 эпох | 0.06259 |
-| **U-Net — 40 эпох** | **0.06227** |
+| U-Net — 40 эпох | 0.06227 |
+| **ResNet18-U-Net — 20 эпох** | **0.06049** |
 
-После дообучения L1 снизилась примерно на 0.51% относительно модели на 20 эпох. По сравнению с grayscale baseline итоговая ошибка уменьшилась на 2.94%.
+Использование предобученного ResNet18 позволило снизить L1 Loss примерно на **2.9%** по сравнению с U-Net после 40 эпох.
+
+Визуально новая модель стала точнее определять цветовые области, особенно на лицах людей. Однако проблема недостаточной насыщенности сохранилась: одежда и другие объекты с неоднозначными цветами часто приобретают нейтральные оттенки.
+
+Анализ каналов `ab` также показал, что предсказанные абсолютные значения цветовых компонентов остаются значительно ниже исходных.
 
 *Приведённые значения L1 рассчитаны на отдельном validation-батче, а не на всей validation-выборке.*
 
-[Ноутбук обучения и анализа](notebooks/03_unet_baseline.ipynb) · [W&B — графики логирования](https://forge.coreweave.com/wandb/arzushkaB/image-colorization?nw=nwuserarzun9530)
+[U-Net baseline](notebooks/03_unet_baseline.ipynb) · [ResNet18-U-Net](notebooks/04_pretrained_resnet.ipynb) · [W&B](https://forge.coreweave.com/wandb/arzushkaB/image-colorization?nw=nwuserarzun9530)
 
 ## Структура проекта
 
@@ -42,12 +55,16 @@ notebooks/
 ├── 00_data_eda.ipynb
 ├── 01_color_spaces.ipynb
 ├── 02_dataset_dataloader.ipynb
-└── 03_unet_baseline.ipynb
+├── 03_unet_baseline.ipynb
+└── 04_pretrained_resnet.ipynb
 
 src/image_colorization/
 ├── color_utils.py
 ├── dataset.py
-└── unet.py
+├── dataloaders.py
+├── training.py
+├── unet.py
+└── resnet_unet.py
 ```
 
 Установка локального пакета:
@@ -60,7 +77,7 @@ pip install -e .
 
 ## Дальнейшие эксперименты
 
-- Влияние scheduler, BatchNorm и аугментаций.
-- U-Net с pretrained ResNet18 encoder.
-- Альтернативные функции потерь для улучшения колоризации.
+- Scheduler для более стабильного обучения.
+- Fine-tuning предобученного ResNet18 encoder.
+- Альтернативные функции потерь для улучшения насыщенности цветов.
 - Сравнение качества на всей validation-выборке.
