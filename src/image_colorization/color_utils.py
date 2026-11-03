@@ -1,5 +1,7 @@
 import numpy as np
 from skimage.color import rgb2lab
+import torch
+import torch.nn.functional as F
 
 def normalize_lab(image):
     L = image[:, :, 0]
@@ -22,3 +24,16 @@ def prepare_lab(image):
     L_norm, ab_norm = normalize_lab(lab_image)
 
     return L_norm, ab_norm
+
+
+def annealed_mean_decode(logits, palette, temperature=0.38):
+    #переносим палитру на то же устройство, что и предсказания
+    palette = palette.to(device=logits.device, dtype=logits.dtype)
+    #преобразуем логиты в вероятности с температурой
+    probs = F.softmax(logits / temperature, dim=1)
+    #получаем координаты ab как взвешенное среднее цветов палитры
+    ab = torch.einsum("bqhw,qc->bchw", probs, palette)
+    #нормализуем ab аналогично нашему датасету
+    ab = ab / 128.0
+
+    return ab
