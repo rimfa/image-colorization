@@ -1,83 +1,92 @@
 # Image Colorization with PyTorch
 
-Проект по автоматической колоризации чёрно-белых изображений с использованием PyTorch. Исследуются архитектуры U-Net и различные подходы к улучшению качества колоризации.
+A PyTorch project for automatic image colorization. Two architectures are implemented and compared: a U-Net trained from scratch and a U-Net with a pretrained ResNet18 encoder.
 
-## Задача
+## Task
 
-Модель получает канал яркости `L` из цветового пространства LAB и предсказывает цветовые каналы `a` и `b` для восстановления цветного изображения.
+Image colorization is formulated as predicting the **a and b color channels** from the **L (lightness) channel** in the CIE Lab color space.
 
-- **Датасет:** [PASCAL VOC 2012](https://www.robots.ox.ac.uk/~vgg/projects/pascal/VOC/voc2012/#devkit).
-- **Размер изображений:** 128 × 128 (Resize + CenterCrop).
-- **Вход:** `L` — `[B, 1, 128, 128]`, нормализация `L / 100`.
-- **Выход:** `ab` — `[B, 2, 128, 128]`, нормализация `ab / 128`.
+- **Dataset:** [PASCAL VOC 2012](https://www.robots.ox.ac.uk/~vgg/projects/pascal/VOC/voc2012/#devkit)
+- **Image size:** 128 × 128
+- **Input:** L channel — `(B, 1, 128, 128)`
+- **Output:** ab channels — `(B, 2, 128, 128)`
+- **Data split:** 70% training / 15% validation / 15% testing
 
-## Baseline: U-Net
+## Models
 
-Реализована собственная U-Net с тремя уровнями downsampling, skip connections и `base_channels=32`, без BatchNorm.
+### U-Net
 
-**Обучение:** L1 Loss, AdamW (`lr=1e-3`), batch size 32. Первоначально модель обучалась 20 эпох, затем была дообучена ещё 20 эпох (всего 40).
+A custom U-Net implementation with three downsampling stages and skip connections. The model was trained from scratch using L1 Loss and the AdamW optimizer for a total of 40 epochs.
 
-## U-Net with Pretrained ResNet18 Encoder
+### ResNet18-U-Net
 
-В следующем эксперименте encoder U-Net был заменён на ResNet18 с предобученными весами ImageNet. Decoder реализован на основе блоков U-Net со skip connections.
+A U-Net architecture with a ResNet18 encoder pretrained on ImageNet. Three training configurations were evaluated:
 
-На данном этапе веса encoder заморожены, обучается только decoder. Входной канал `L` дублируется до трёх каналов с последующей нормализацией ImageNet.
+- **Frozen Encoder:** Training the decoder while keeping the encoder weights frozen.
+- **ReduceLROnPlateau:** Using a learning rate scheduler to adjust the learning rate during training.
+- **Fine-tuning:** Unfreezing and fine-tuning the last encoder block (`layer4`).
 
-**Обучение:** L1 Loss, AdamW (`lr=1e-3`), batch size 32, 20 эпох.
+All experiments used L1 Loss for regression-based color prediction.
 
-## Результаты
+## Results
 
-Обучение проводилось в Google Colab с использованием GPU, метрики отслеживались в Weights & Biases.
+L1 Loss comparison on a single validation batch of 32 images:
 
-Сравнение L1 Loss на одном validation-батче из 32 изображений:
-
-| Модель | L1 Loss |
+| Model | L1 Loss |
 |---|---:|
-| Grayscale baseline (`ab = 0`) | 0.06416 |
-| U-Net — 20 эпох | 0.06259 |
-| U-Net — 40 эпох | 0.06227 |
-| **ResNet18-U-Net — 20 эпох** | **0.06049** |
+| Grayscale Baseline (`ab = 0`) | 0.06416 |
+| U-Net (40 epochs) | 0.06227 |
+| ResNet18-U-Net (Frozen Encoder) | **0.06049** |
+| ResNet18-U-Net + Scheduler | 0.06084 |
+| ResNet18-U-Net (Fine-tuning) | 0.06172 |
 
-Использование предобученного ResNet18 позволило снизить L1 Loss примерно на **2.9%** по сравнению с U-Net после 40 эпох.
+The pretrained ResNet18 encoder reduced the prediction error compared to the original U-Net.
 
-Визуально новая модель стала точнее определять цветовые области, особенно на лицах людей. Однако проблема недостаточной насыщенности сохранилась: одежда и другие объекты с неоднозначными цветами часто приобретают нейтральные оттенки.
+Evaluation of the frozen encoder model on the full validation set (2,569 images) achieved a **mean L1 loss of 0.0597**, outperforming the grayscale baseline on **71.4% of images**.
 
-Анализ каналов `ab` также показал, что предсказанные абсолютные значения цветовых компонентов остаются значительно ниже исходных.
+Despite the improvement in L1 Loss, the predicted colors often remained desaturated.
 
-*Приведённые значения L1 рассчитаны на отдельном validation-батче, а не на всей validation-выборке.*
+Models were trained in Google Colab using GPU acceleration. Training histories and experiment metrics are available in [Weights & Biases](https://wandb.ai/arzushkaB/image-colorization).
 
-[U-Net baseline](notebooks/03_unet_baseline.ipynb) · [ResNet18-U-Net](notebooks/04_pretrained_resnet.ipynb) · [W&B](https://forge.coreweave.com/wandb/arzushkaB/image-colorization?nw=nwuserarzun9530)
-
-## Структура проекта
+## Project Structure
 
 ```text
 notebooks/
-├── 00_data_eda.ipynb
-├── 01_color_spaces.ipynb
-├── 02_dataset_dataloader.ipynb
-├── 03_unet_baseline.ipynb
-└── 04_pretrained_resnet.ipynb
+├── 00_data_exploration.ipynb
+├── 01_unet_baseline.ipynb
+└── 02_resnet_unet.ipynb
 
 src/image_colorization/
-├── color_utils.py
 ├── dataset.py
 ├── dataloaders.py
-├── training.py
+├── color_utils.py
 ├── unet.py
-└── resnet_unet.py
+├── resnet_unet.py
+└── training.py
 ```
 
-Установка локального пакета:
+The notebooks contain dataset exploration, training results, model evaluation, and colorization examples.
+
+## Usage
+
+Clone the repository and install the project:
 
 ```bash
+git clone https://github.com/rimfa/image-colorization.git
+cd image-colorization
 pip install -e .
 ```
 
-Датасет и checkpoints не включены в репозиторий.
+Download the PASCAL VOC 2012 dataset and place the images in:
 
-## Дальнейшие эксперименты
+```text
+VOCdevkit/VOC2012/JPEGImages/
+```
 
-- Scheduler для более стабильного обучения.
-- Fine-tuning предобученного ResNet18 encoder.
-- Альтернативные функции потерь для улучшения насыщенности цветов.
-- Сравнение качества на всей validation-выборке.
+Place the pretrained model checkpoints in:
+
+```text
+checkpoints/
+```
+
+The dataset and model checkpoints are not included in the repository. The notebooks contain saved experiment results that can be viewed without retraining the models.
